@@ -270,6 +270,10 @@
         {
             if (e.CloseReason == CloseReason.WindowsShutDown)
             {
+                workerCrs.Cancel();
+
+                Thread.Sleep(50);
+
                 Application.Exit();
             }
             else
@@ -283,7 +287,7 @@
         {
             this.ShowInTaskbar = false;
 
-            this.WindowState = FormWindowState.Normal;
+            //this.WindowState = FormWindowState.Normal;
             this.WindowState = FormWindowState.Minimized;
             this.Hide();
         }

@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
-namespace ThrottleStopRunner
+﻿namespace ThrottleStopRunner
 {
+    using System;
+    using System.Diagnostics;
+    using System.Windows.Forms;
+
+
     static class Program
     {
         /// <summary>
@@ -16,7 +15,13 @@ namespace ThrottleStopRunner
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+
+            Process[] pname = Process.GetProcessesByName(Application.ProductName);
+
+            if (pname.Length < 2)
+                Application.Run(new MainForm());
+            else
+                Application.Exit();
         }
     }
 }
