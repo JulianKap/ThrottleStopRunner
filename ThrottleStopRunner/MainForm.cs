@@ -1,16 +1,11 @@
 ﻿namespace ThrottleStopRunner
 {
     using System;
-    using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.Data;
     using System.Diagnostics;
-    using System.Drawing;
-    using System.Linq;
-    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Windows.Forms;
+    using NLog;
 
 
     public partial class MainForm : Form
@@ -19,15 +14,25 @@
 
         TimeSpan _Interval;
 
-        CancellationTokenSource workerCrs;
+        CancellationTokenSource _WorkerCrs;
         bool _IsWork;
 
         bool closeForm = true;
 
-        static string nameProgram = "UpdaterMyTraffics.exe";
+
+
+        #region Path program
+        
+        string nameProgram;
+        string pathProgram;
+         
+        #endregion
+        
 
         static readonly object locker = new object();
 
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+        
         #endregion
 
 
@@ -38,14 +43,18 @@
         {
             InitializeComponent();
 
-            Interval = TimeSpan.FromMinutes(1);
-
-            workerCrs = new CancellationTokenSource();
-
-            _IsWork = false;
-
+            this.Interval = TimeSpan.FromMinutes(5);
+            this._WorkerCrs = new CancellationTokenSource();
+            this._IsWork = false;
             this.Text = Application.ProductName;
 
+            
+            this.nameProgram = "ThrottleStop";
+            this.pathProgram = @"C:\ThrottleStop";
+            
+            //this.nameProgram = "MeteoSSC";
+            //this.pathProgram = @"C:\ThrottleStop";
+            
 
             button1_Click(null, null);
 
@@ -78,7 +87,7 @@
         /// <summary>
         /// 
         /// </summary>
-        static string NameProgram
+        string NameProgram
         {
             get
             {
@@ -136,15 +145,15 @@
                 // Остановка работы
                 if (_IsWork)
                 {
-                    workerCrs.Cancel();
+                    _WorkerCrs.Cancel();
 
                     button1.Text = "Запустить";
                 }
                 // Запуск работы
                 else
                 {
-                    if (workerCrs.IsCancellationRequested)
-                        workerCrs = new CancellationTokenSource();
+                    if (_WorkerCrs.IsCancellationRequested)
+                        _WorkerCrs = new CancellationTokenSource();
 
                     StartWorker();
 
@@ -166,46 +175,51 @@
 
 
 
+        /// <summary>
+        /// Метод запуска работы основного потока.
+        /// </summary>
         async void StartWorker()
         {
             try
             {
-                await Task.Run(() => RoundWorker(), workerCrs.Token);
+                await Task.Run(() => RoundWorker(), _WorkerCrs.Token);
             }
             catch (TaskCanceledException ex)
             {
-
             }
             catch (Exception ex2)
             {
-
+                MessageBox.Show("Внимание!", $"{ex2.Message}");
             }
         }
 
 
+        /// <summary>
+        /// Метод запуска throttle stop.
+        /// </summary>
         async void RoundWorker()
         {
             bool workingProgram = true;
 
-            while (!workerCrs.IsCancellationRequested)
+            while (!_WorkerCrs.IsCancellationRequested)
             {
-
                 try
                 {
-                    var pnames = Process.GetProcessesByName("ThrottleStop");
+                    var pnames = Process.GetProcessesByName(NameProgram);
 
                     if (pnames.Length == 0)
                         workingProgram = false;
 
                     
                     // Если программа закрылась, то она запускается
-
                     if (!workingProgram)
                     {
+                        await Task.Delay(TimeSpan.FromSeconds(60));
+
                         // Запуск updater.
                         using (Process proc = new Process())
                         {
-                            proc.StartInfo.FileName = @"C:\ThrottleStop\ThrottleStop.exe";
+                            proc.StartInfo.FileName = $"{pathProgram}\\{NameProgram}.exe";
                             proc.StartInfo.CreateNoWindow = true;
                             proc.StartInfo.UseShellExecute = false;
                             proc.Start();
@@ -215,15 +229,19 @@
                     }
 
 
-                    await Task.Delay(Interval, workerCrs.Token);
+                    await Task.Delay(Interval, _WorkerCrs.Token);
                 }
                 catch (TaskCanceledException ex)
                 {
-
+                    logger.Info($"Задача проверки Throttle stop остановлена  ex: {ex.Message}");
                 }
                 catch (Exception ex2)
                 {
-
+                    MessageBox.Show(
+                        "Внимание!",
+                        $"{ex2.Message}",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
         }
@@ -256,6 +274,8 @@
         #endregion
 
 
+        #region Event main form
+
         /// <summary>
         /// Открытие главной формы.
         /// </summary>
@@ -265,15 +285,25 @@
             this.WindowState = FormWindowState.Normal;
             this.Show();
         }
+        
+        /// <summary>
+        /// Событие во время загрузки программы.
+        /// </summary>
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+            this.ShowInTaskbar = false;
+            this.WindowState = FormWindowState.Minimized;
+            this.Hide();
+        }
 
+        /// <summary>
+        /// Событие при закрытии программы.
+        /// </summary>
         void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.WindowsShutDown)
             {
-                workerCrs.Cancel();
-
-                Thread.Sleep(50);
-
+                _WorkerCrs.Cancel();
                 Application.Exit();
             }
             else
@@ -283,13 +313,6 @@
             }
         }
 
-        private void MainForm_Load(object sender, EventArgs e)
-        {
-            this.ShowInTaskbar = false;
-
-            //this.WindowState = FormWindowState.Normal;
-            this.WindowState = FormWindowState.Minimized;
-            this.Hide();
-        }
+        #endregion
     }
 }
