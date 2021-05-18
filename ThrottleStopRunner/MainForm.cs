@@ -164,10 +164,12 @@
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при запуске работы: {ex.Message}", 
-                    "Внимание", 
-                    MessageBoxButtons.OK, 
-                    MessageBoxIcon.Error);
+                BeginInvoke((MethodInvoker)(() => {    
+                    MessageBox.Show($"Ошибка при запуске работы: {ex.Message}", 
+                        "Внимание", 
+                        MessageBoxButtons.OK, 
+                        MessageBoxIcon.Error);
+                }));
 
                 return;
             }
@@ -189,7 +191,11 @@
             }
             catch (Exception ex2)
             {
-                MessageBox.Show("Внимание!", $"{ex2.Message}");
+                BeginInvoke((MethodInvoker)(() => {    
+                    MessageBox.Show(
+                        "Внимание!", 
+                        $"{ex2.Message}");
+                }));
             }
         }
 
@@ -214,8 +220,10 @@
                     // Если программа закрылась, то она запускается
                     if (!workingProgram)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(60));
-
+#if !DEBUG
+                         await Task.Delay(TimeSpan.FromSeconds(60));
+#endif 
+                        
                         // Запуск updater.
                         using (Process proc = new Process())
                         {
@@ -237,11 +245,13 @@
                 }
                 catch (Exception ex2)
                 {
-                    MessageBox.Show(
-                        "Внимание!",
-                        $"{ex2.Message}",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                    BeginInvoke((MethodInvoker)(() => {    
+                        MessageBox.Show(
+                            "Внимание!",
+                            $"{ex2.Message}",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error); 
+                    }));
                 }
             }
         }
